@@ -1,0 +1,6 @@
+     for file in "$@"
+     do
+          print "$file"
+          git add "$file"
+     done
+     git commit -m "Update"

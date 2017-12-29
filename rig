@@ -1,0 +1,42 @@
+#!/usr/bin/ksh
+Tmp="/tmp/$$"
+TmpDir="/tmp/dir$$"
+trap 'rm -f "$Tmp" >/dev/null 2>&1' 0
+trap "exit 2" 1 2 3 13 15
+rm $Tmp  >/dev/null 2>&1
+
+RIGFILE=/usr/local/tools/myrigs
+PROFILE=star1
+UBUNTUAMI=ami-80861296
+SG=sg-5ed76320
+KY=star1
+AMI=ami-08770a1e
+TYPE=t2.micro
+
+# -------------------------------------------------------------------------------
+# Create New Instance
+# -------------------------------------------------------------------------------
+ID=`aws --profile $PROFILE ec2 run-instances --image-id $AMI --count 1 --instance-type t2.micro --key-name $KY --security-group-ids $SG --query 'Instances[0].InstanceId' --output text`
+# -------------------------------------------------------------------------------
+# Tag New Instance
+# -------------------------------------------------------------------------------
+aws --profile $PROFILE ec2 create-tags --resources $ID --tags Key=Name,Value=$1
+aws --profile $PROFILE ec2 create-tags --resources $ID --tags Key=SubName,Value=Star
+# -------------------------------------------------------------------------------
+# Get New Instance DNS
+# -------------------------------------------------------------------------------
+DNS=`aws --profile $PROFILE ec2 describe-instances --instance-ids $ID --query 'Reservations[].Instances[].PublicDnsName'`
+
+
+print $ID   >> $RIGFILE
+print $1    >> $RIGFILE
+print $DNS  >> $RIGFILE
+printf "ssh  -i \"/home/mestes/PEMS/star1.pem\" ubuntu@%s\n" "$DNS" >> $RIGFILE
+printf "sftp -i \"/home/mestes/PEMS/star1.pem\" ubuntu@%s\n" "$DNS" >> $RIGFILE
+printf "aws --profile %s ec2 start-instances     --instance-ids %s\n" "$PROFILE" "$ID" >> $RIGFILE
+printf "aws --profile %s ec2 stop-instances      --instance-ids %s\n" "$PROFILE" "$ID" >> $RIGFILE
+printf "aws --profile %s ec2 terminate-instances --instance-ids %s\n" "$PROFILE" "$ID" >> $RIGFILE
+printf "aws --profile %s ec2 create-image        --instance-id %s --name \"%s\"\n" "$PROFILE" "$ID" "$ID" >> $RIGFILE
+printf "aws --profile %s ec2 describe-instances  --instance-ids %s --query 'Reservations[].Instances[].PublicDnsName'\n" "$PROFILE" "$ID" >> $RIGFILE
+
+cat $RIGFILE
