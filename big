@@ -1,0 +1,2 @@
+du -ha . | sort -n -r | head -n 10
+
